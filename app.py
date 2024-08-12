@@ -7,6 +7,7 @@ class DatasetURL:
     domain = "data.cityofnewyork.us"
     dataset = "h9gi-nx95"
 
+
 @st.cache_data
 def load_data(url_object: DatasetURL, nrow: int) -> pd.DataFrame:
     """
@@ -23,6 +24,15 @@ def load_data(url_object: DatasetURL, nrow: int) -> pd.DataFrame:
     results_df['crash_date'] = pd.to_datetime(results_df['crash_date'])
     results_df['crash_time'] = pd.to_datetime(results_df['crash_time'])
 
+    # Convert 'number_of_persons_injured' to numeric, handling errors
+    results_df['number_of_persons_injured'] = pd.to_numeric(results_df['number_of_persons_injured'], errors='coerce')
+    results_df['number_of_persons_injured'].fillna(0, inplace=True)
+
+    # Ensure latitude and longitude are floats
+    results_df['latitude'] = pd.to_numeric(results_df['latitude'], errors='coerce')
+    results_df['longitude'] = pd.to_numeric(results_df['longitude'], errors='coerce')
+
+    # Drop rows with missing latitude and longitude
     results_df.dropna(subset=['latitude', 'longitude'], inplace=True)
 
     return results_df
@@ -47,6 +57,9 @@ if submit_button:
     st.toast(f"Size set to: {user_nrow}")
 
 st.title("Motor Vehicle Collisions in New York City")
-st.markdown("This application is a Streamlit dashboard that can be used to analyze motor vehicle collisions in New York City.")
+st.write("This application is a Streamlit dashboard that can be used to analyze motor vehicle collisions in New York City.")
 
-
+st.header("Where Are Most People Injured in NYC?")
+injured_people = st.slider("Number of injured persons", 0, 19)
+st.map(data.query("number_of_persons_injured >= @injured_people")[['latitude', 'longitude']].dropna(how="any"))
+#%%
