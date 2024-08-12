@@ -54,6 +54,8 @@ def load_data(url_object: DatasetURL, nrow: int) -> pd.DataFrame:
     return results_df
 
 
+st.set_page_config(page_title="Vehicle Collisions in NYC", layout="wide")
+
 st.sidebar.header("Adjust dataset size")
 with st.sidebar.form(key="submit"):
     user_nrow = st.number_input("Enter dataset size", min_value=50_000, max_value=2_000_000)
