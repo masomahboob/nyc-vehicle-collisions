@@ -84,3 +84,13 @@ st.write(pdk.Deck(
         pdk.Layer("HexagonLayer", data=data[["crash_time", "latitude", "longitude"]], get_position=["longitude", "latitude"], radius=100, extruded=True, pickable=True, elevation_scale=4, elevation_range=[0, 1000])
     ]
 ))
+
+st.subheader(f"Breakdown by minute between {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")} and {dt.now().replace(hour=hour+1, minute=0).strftime("%H:%M")}")
+filtered = data[
+    (data["crash_time"].dt.hour >= hour) & (data["crash_time"].dt.hour <= (hour + 1))
+]
+
+hist = np.histogram(filtered["crash_time"].dt.minute, bins=60, range=(0, 60))[0]
+chart_data = pd.DataFrame({"minute": range(60), "crashes": hist})
+fig = px.bar(chart_data, x="minute", y="crashes", hover_data=["minute", "crashes"], height=400)
+st.write(fig)
