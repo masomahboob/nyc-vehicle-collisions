@@ -44,7 +44,7 @@ def load_data(url_object: DatasetURL, nrow: int) -> pd.DataFrame:
 
 st.sidebar.header("Adjust dataset size")
 with st.sidebar.form(key="submit"):
-    user_nrow = st.number_input("Enter dataset size", min_value=2_000, max_value=2_000_000)
+    user_nrow = st.number_input("Enter dataset size", min_value=50_000, max_value=2_000_000)
     submit_button = st.form_submit_button("Set")
 
 data = load_data(DatasetURL(), user_nrow)
@@ -65,32 +65,42 @@ injured_people = st.slider("Number of injured persons", 0, 19)
 st.map(data.query("number_of_persons_injured >= @injured_people")[['latitude', 'longitude']].dropna(how="any"))
 
 st.header("How many collisions have occurred during a given time of day?")
-hour = st.selectbox("Hour to look at", range(0, 24), 1)
+hour = st.selectbox("Select Hour", range(0, 24), 19)
 data = data[data['crash_time'].dt.hour == hour]
-if st.checkbox(f"Show subset of raw data for {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")}", False):
+
+
+with st.popover(f"Show subset data [{dt.now().replace(hour=hour, minute=0).strftime("%H:%M")} and {dt.now().replace(hour=hour+1, minute=0).strftime("%H:%M")}]"):
+    st.subheader(f"Raw data for {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")} and {dt.now().replace(hour=hour+1, minute=0).strftime("%H:%M")}")
     st.write(data)
 
 midpoint = (np.average(data['latitude']), np.average(data['longitude']))
 
-st.write(pdk.Deck(
-    map_style="mapbox://styles/mapbox/light-v9",
-    initial_view_state={
-        "latitude": midpoint[0],
-        "longitude": midpoint[1],
-        "zoom": 11,
-        "pitch": 50,
-    },
-    layers=[
-        pdk.Layer("HexagonLayer", data=data[["crash_time", "latitude", "longitude"]], get_position=["longitude", "latitude"], radius=100, extruded=True, pickable=True, elevation_scale=4, elevation_range=[0, 1000])
+hour_tab, minute_tab = st.tabs(["By Hour", "By Minute"])
+
+with hour_tab:
+    st.markdown("### By Hour")
+    st.markdown(f"Breakdown by hour between {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")} and {dt.now().replace(hour=hour + 1, minute=0).strftime("%H:%M")}")
+    st.write(pdk.Deck(
+        map_style="mapbox://styles/mapbox/light-v9",
+        initial_view_state={
+            "latitude": midpoint[0],
+            "longitude": midpoint[1],
+            "zoom": 11,
+            "pitch": 70,
+        },
+        layers=[
+            pdk.Layer("HexagonLayer", data=data[["crash_time", "latitude", "longitude"]], get_position=["longitude", "latitude"], radius=100, extruded=True, pickable=True, elevation_scale=4, elevation_range=[0, 1000])
+        ]
+    ))
+
+with minute_tab:
+    st.markdown("### By Minute")
+    st.markdown(f"Breakdown by minute between {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")} and {dt.now().replace(hour=hour+1, minute=0).strftime("%H:%M")}")
+    filtered = data[
+        (data["crash_time"].dt.hour >= hour) & (data["crash_time"].dt.hour <= (hour + 1))
     ]
-))
 
-st.subheader(f"Breakdown by minute between {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")} and {dt.now().replace(hour=hour+1, minute=0).strftime("%H:%M")}")
-filtered = data[
-    (data["crash_time"].dt.hour >= hour) & (data["crash_time"].dt.hour <= (hour + 1))
-]
-
-hist = np.histogram(filtered["crash_time"].dt.minute, bins=60, range=(0, 60))[0]
-chart_data = pd.DataFrame({"minute": range(60), "crashes": hist})
-fig = px.bar(chart_data, x="minute", y="crashes", hover_data=["minute", "crashes"], height=400)
-st.write(fig)
+    hist = np.histogram(filtered["crash_time"].dt.minute, bins=60, range=(0, 60))[0]
+    chart_data = pd.DataFrame({"minute": range(60), "crashes": hist})
+    fig = px.bar(chart_data, x="minute", y="crashes", hover_data=["minute", "crashes"], height=400)
+    st.write(fig)
