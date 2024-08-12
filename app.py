@@ -1,7 +1,11 @@
+import numpy as np
 import streamlit as st
 import pandas as pd
 from sodapy import Socrata
+import plotly.express as px
+import pydeck as pdk
 from dataclasses import dataclass
+from datetime import datetime as dt
 @dataclass
 class DatasetURL:
     domain = "data.cityofnewyork.us"
@@ -37,20 +41,17 @@ def load_data(url_object: DatasetURL, nrow: int) -> pd.DataFrame:
 
     return results_df
 
-data = None
-#%%
+
 st.sidebar.header("Adjust dataset size")
-with st.sidebar:
-    user_nrow = 2_000
-    with st.form(key="submit"):
-        user_nrow = st.number_input("Enter dataset size", min_value=2_000, max_value=2_000_000)
-        submit_button = st.form_submit_button("Set")
+with st.sidebar.form(key="submit"):
+    user_nrow = st.number_input("Enter dataset size", min_value=2_000, max_value=2_000_000)
+    submit_button = st.form_submit_button("Set")
 
-    data = load_data(DatasetURL(), user_nrow)
+data = load_data(DatasetURL(), user_nrow)
 
-    with st.popover("Show Raw Data"):
-        st.subheader("Raw Data")
-        st.write(data)
+with st.sidebar.popover("Show Raw Data"):
+    st.subheader("Raw Data")
+    st.write(data)
 
 
 if submit_button:
@@ -59,7 +60,27 @@ if submit_button:
 st.title("Motor Vehicle Collisions in New York City")
 st.write("This application is a Streamlit dashboard that can be used to analyze motor vehicle collisions in New York City.")
 
-st.header("Where Are Most People Injured in NYC?")
+st.header("Where have most people been injured in NYC?")
 injured_people = st.slider("Number of injured persons", 0, 19)
 st.map(data.query("number_of_persons_injured >= @injured_people")[['latitude', 'longitude']].dropna(how="any"))
-#%%
+
+st.header("How many collisions have occurred during a given time of day?")
+hour = st.selectbox("Hour to look at", range(0, 24), 1)
+data = data[data['crash_time'].dt.hour == hour]
+if st.checkbox(f"Show subset of raw data for {dt.now().replace(hour=hour, minute=0).strftime("%H:%M")}", False):
+    st.write(data)
+
+midpoint = (np.average(data['latitude']), np.average(data['longitude']))
+
+st.write(pdk.Deck(
+    map_style="mapbox://styles/mapbox/light-v9",
+    initial_view_state={
+        "latitude": midpoint[0],
+        "longitude": midpoint[1],
+        "zoom": 11,
+        "pitch": 50,
+    },
+    layers=[
+        pdk.Layer("HexagonLayer", data=data[["crash_time", "latitude", "longitude"]], get_position=["longitude", "latitude"], radius=100, extruded=True, pickable=True, elevation_scale=4, elevation_range=[0, 1000])
+    ]
+))
