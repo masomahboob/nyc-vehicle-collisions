@@ -32,6 +32,18 @@ def load_data(url_object: DatasetURL, nrow: int) -> pd.DataFrame:
     results_df['number_of_persons_injured'] = pd.to_numeric(results_df['number_of_persons_injured'], errors='coerce')
     results_df['number_of_persons_injured'].fillna(0, inplace=True)
 
+    # Convert 'number_of_pedestrians_injured' to numeric, handling errors
+    results_df['number_of_pedestrians_injured'] = pd.to_numeric(results_df['number_of_pedestrians_injured'], errors='coerce')
+    results_df['number_of_pedestrians_injured'].fillna(0, inplace=True)
+
+    # Convert 'number_of_cyclist_injured' to numeric, handling errors
+    results_df['number_of_cyclist_injured'] = pd.to_numeric(results_df['number_of_cyclist_injured'], errors='coerce')
+    results_df['number_of_cyclist_injured'].fillna(0, inplace=True)
+
+    # Convert 'number_of_pedestrians_injured' to numeric, handling errors
+    results_df['number_of_motorist_injured'] = pd.to_numeric(results_df['number_of_motorist_injured'], errors='coerce')
+    results_df['number_of_motorist_injured'].fillna(0, inplace=True)
+
     # Ensure latitude and longitude are floats
     results_df['latitude'] = pd.to_numeric(results_df['latitude'], errors='coerce')
     results_df['longitude'] = pd.to_numeric(results_df['longitude'], errors='coerce')
@@ -48,6 +60,7 @@ with st.sidebar.form(key="submit"):
     submit_button = st.form_submit_button("Set")
 
 data = load_data(DatasetURL(), user_nrow)
+original_data = data
 
 with st.sidebar.popover("Show Raw Data"):
     st.subheader("Raw Data")
@@ -104,3 +117,13 @@ with minute_tab:
     chart_data = pd.DataFrame({"minute": range(60), "crashes": hist})
     fig = px.bar(chart_data, x="minute", y="crashes", hover_data=["minute", "crashes"], height=400)
     st.write(fig)
+
+st.header("Top 5 dangerous streets by affected type")
+select = st.selectbox("Affected type of people", ["Pedestrians", "Cyclists", "Motorists"])
+
+if select == "Pedestrians":
+    st.write(original_data.query("number_of_pedestrians_injured >= 1")[["on_street_name", "number_of_pedestrians_injured"]].sort_values(by=["number_of_pedestrians_injured"], ascending=False).dropna(how="any")[:5])
+elif select == "Cyclists":
+    st.write(original_data.query("number_of_cyclist_injured >= 1")[["on_street_name", "number_of_cyclist_injured"]].sort_values(by=["number_of_cyclist_injured"], ascending=False).dropna(how="any")[:5])
+else:
+    st.write(original_data.query("number_of_motorist_injured >= 1")[["on_street_name", "number_of_motorist_injured"]].sort_values(by=["number_of_motorist_injured"], ascending=False).dropna(how="any")[:5])
